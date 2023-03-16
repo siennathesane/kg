@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cloudflared
+  name: cloudflared-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      pod: cloudflared
+  template:
+    metadata:
+      labels:
+        pod: cloudflared
+    spec:
+      containers:
+      - command:
+        - cloudflared
+        - tunnel
+        - --metrics
+        - 0.0.0.0:2000
+        - run
+        args:
+        - --url
+        - http://arcanity.default.svc.cluster.local:8080
+        - --token
+        - eyJhIjoiMjFjZjU3MTYxY2NhMTZmNTc3NTQzMjY3ZDZiMDNjZmYiLCJ0IjoiY2Q1MmJjNzMtMjZhNS00YmYzLWE1ZDctYWNjNzkwMzAxNWYxIiwicyI6Ill6ZGlOelJrTTJZdE1tVmxZeTAwTVRSakxUazRNell0T0RFMU1HUTJZak5tWm1FMyJ9
+        image: cloudflare/cloudflared:latest
+        name: cloudflared
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 2000
+          failureThreshold: 1
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: arcanity
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - backend:
+              service:
+                name: arcanity
+                port:
+                  number: 8080
+            pathType: Exact
+            path: /v1/extract
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arcanity
+spec:
+  selector:
+    app: arcanity
+  ports:
+    - port: 8080
+      name: http
+  type: LoadBalancer
+#---
+#apiVersion: apps/v1
+#kind: Deployment
+#metadata:
+#  name: arcanity
+#  labels:
+#    app: arcanity
+#spec:
+#  replicas: 1
+#  template:
+#    metadata:
+#      name: arcanity
+#      labels:
+#        app: arcanity
+#    spec:
+#      containers:
+#        - name: arcanity
+#          image: shieldmaidens.dev/arcanity:latest
+#          imagePullPolicy: Always
+#          ports:
+#            - containerPort: 8080
+#              name: http
+#              protocol: TCP
+#      restartPolicy: Always
+#  selector:
+#    matchLabels:
+#      app: arcanity
