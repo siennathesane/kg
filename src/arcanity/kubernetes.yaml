@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: cloudflared
-  name: cloudflared-deployment
+  name: cloudflared
 spec:
   replicas: 1
   selector:
@@ -65,30 +65,32 @@ spec:
     - port: 8080
       name: http
   type: LoadBalancer
-#---
-#apiVersion: apps/v1
-#kind: Deployment
-#metadata:
-#  name: arcanity
-#  labels:
-#    app: arcanity
-#spec:
-#  replicas: 1
-#  template:
-#    metadata:
-#      name: arcanity
-#      labels:
-#        app: arcanity
-#    spec:
-#      containers:
-#        - name: arcanity
-#          image: shieldmaidens.dev/arcanity:latest
-#          imagePullPolicy: Always
-#          ports:
-#            - containerPort: 8080
-#              name: http
-#              protocol: TCP
-#      restartPolicy: Always
-#  selector:
-#    matchLabels:
-#      app: arcanity
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arcanity
+  labels:
+    app: arcanity
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: arcanity
+      labels:
+        app: arcanity
+    spec:
+      imagePullSecrets:
+        - name: gitlab
+      containers:
+        - name: arcanity
+          image: registry.gitlab.com/shieldmaidens/root/arcanity
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: arcanity
