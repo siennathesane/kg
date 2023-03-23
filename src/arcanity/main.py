@@ -6,6 +6,7 @@ from sanic import Sanic
 from sanic.request import Request
 from sanic.response import JSONResponse, json
 from sanic.worker.manager import WorkerManager
+from spacy.morphology import Morphology
 from spacy.tokens.doc import Doc
 
 # hide the warning logs
@@ -65,6 +66,10 @@ async def extract(request: Request) -> JSONResponse:
     # delete the text field to optimise data usage
     d = parsed.to_json()
     del d["text"]
+
+    # extract the morphologies for easier downstream parsing
+    for idx, _ in enumerate(d["tokens"]):
+        d["tokens"][idx]["morph"] = Morphology.feats_to_dict(d["tokens"][idx]["morph"])
     return json(d)
 
 
@@ -79,8 +84,22 @@ async def load_labels(request: Request) -> JSONResponse:
 
     """
     entities = request.ctx.nlp.get_pipe("ner").labels
+    ent_dict = {}
+    for entity in entities:
+        ent_dict[entity] = spacy.explain(entity)
+
     tags = request.ctx.nlp.get_pipe("tagger").labels
-    return json({"entities": entities, "partsOfSpeech": tags})
+    pos_dict = {}
+    for tag in tags:
+        pos_dict[tag] = spacy.explain(tag)
+
+    deps = request.ctx.nlp.get_pipe("parser").labels
+    deps_dict = {}
+    for dep in deps:
+        deps_dict[dep] = spacy.explain(dep)
+    return json({"entities": ent_dict,
+                 "partsOfSpeech": pos_dict,
+                 "dependencies": deps_dict})
 
 
 if __name__ == '__main__':
