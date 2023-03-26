@@ -1,19 +1,34 @@
 #!/usr/bin/env python3
-from warnings import simplefilter
-
+import sentry_sdk
 import spacy
+
+from os import getenv
 from sanic import Sanic
 from sanic.request import Request
 from sanic.response import JSONResponse, json
 from sanic.worker.manager import WorkerManager
+from sentry_sdk import capture_exception
+from sentry_sdk.integrations.sanic import SanicIntegration
 from spacy.morphology import Morphology
 from spacy.tokens.doc import Doc
+from warnings import simplefilter
+
+app = Sanic("arcanity")
+
+sentry_sdk.init(
+    dsn="https://94586711de2c4723b92f768f6337f86f@o4504901793873920.ingest.sentry.io/4504901795774464",
+    traces_sample_rate=1.0,
+    sample_rate=1.0,
+    integrations=[SanicIntegration()],
+    _experiments={
+        "profiles_sample_rate": 1.0,
+    },
+)
 
 # hide the warning logs
 simplefilter("ignore")
 
 # set up the app and set the worker boot timer
-app = Sanic("arcanity")
 WorkerManager.THRESHOLD = 1800
 
 
@@ -44,7 +59,7 @@ async def load_model(request: Request):
     request.ctx.nlp = app.ctx.nlp
 
 
-@app.post("/v1/extract")
+@app.post("/v1/nlp/extract")
 async def extract(request: Request) -> JSONResponse:
     """
     Extract the information from free-form text.
@@ -54,13 +69,13 @@ async def extract(request: Request) -> JSONResponse:
     Returns: JSON HTTP response
 
     """
-    # noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal,PyTypeChecker
     parsed: Doc = None
     body = request.json
     try:
         parsed = request.ctx.nlp(body["content"])
     except Exception as e:
-        print(e)
+        capture_exception(e)
         return json(None, 500)
 
     # delete the text field to optimise data usage
@@ -73,7 +88,7 @@ async def extract(request: Request) -> JSONResponse:
     return json(d)
 
 
-@app.get("/v1/features")
+@app.get("/v1/nlp/features")
 async def load_labels(request: Request) -> JSONResponse:
     """
     Determine the available features for the NLP Service
@@ -103,4 +118,5 @@ async def load_labels(request: Request) -> JSONResponse:
 
 
 if __name__ == '__main__':
+    port = int(getenv("PORT", 8080))
     app.run("0.0.0.0", 8080, single_process=True)
