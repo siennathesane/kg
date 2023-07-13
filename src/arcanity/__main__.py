@@ -3,6 +3,7 @@ import sentry_sdk
 import spacy
 
 from os import getenv
+
 from sanic import Sanic
 from sanic.request import Request
 from sanic.response import JSONResponse, json
@@ -12,6 +13,8 @@ from sentry_sdk.integrations.sanic import SanicIntegration
 from spacy.morphology import Morphology
 from spacy.tokens.doc import Doc
 from warnings import simplefilter
+
+from info.triples import svo_triples
 
 app = Sanic("arcanity")
 
@@ -64,6 +67,8 @@ async def extract(request: Request) -> JSONResponse:
     """
     Extract the information from free-form text.
     Args:
+        svo: subject verb object triples, set as `true` to extract triples
+        cce: clausal compliment expansions, set as `true` to enable it, `svo` must also be set to true
         request: An HTTP POST request.
 
     Returns: JSON HTTP response
@@ -72,6 +77,7 @@ async def extract(request: Request) -> JSONResponse:
     # noinspection PyUnusedLocal,PyTypeChecker
     parsed: Doc = None
     body = request.json
+
     try:
         parsed = request.ctx.nlp(body["content"])
     except Exception as e:
@@ -85,6 +91,18 @@ async def extract(request: Request) -> JSONResponse:
     # extract the morphologies for easier downstream parsing
     for idx, _ in enumerate(d["tokens"]):
         d["tokens"][idx]["morph"] = Morphology.feats_to_dict(d["tokens"][idx]["morph"])
+
+    if bool(request.args.get("svo")):
+        t = []
+        triples = svo_triples(parsed, bool(request.args.get("cce")))
+        for triple in triples:
+            t.append({
+                "subjects": [{"id": s.i, "value": str(s)} for s in triple.subject],
+                "predicates": [{"id": s.i, "value": str(s)} for s in triple.verb],
+                "objects": [{"id": s.i, "value": str(s)} for s in triple.object],
+            })
+        d["triples"] = t
+
     return json(d)
 
 
