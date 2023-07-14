@@ -1,3 +1,11 @@
 **.idea/
 **.vscode/
-bazel-*/
+
+bazel-ner
+bazel-bin
+bazel-out
+bazel-testlogs
+src/arcanity/venv/.Python
+src/arcanity/venv/bin/python3
+src/arcanity/venv/bin/python
+src/arcanity/venv/bin/python3.9

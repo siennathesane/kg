@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option go_package = "github.com/mxplusb/veridian/src/go/core/v1";
+
+message Thing {
+    string additional_type = 1;
+    string alternate_name = 2;
+    oneof descriptor {
+        string description = 3;
+    }
+}
